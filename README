@@ -12,7 +12,7 @@ Requirements:
 
 Instructions:
 - Install above requirements.
-- Modify the convert_db.py script to include the connection information for your source MSSQL database and your destination MySQL database.
-- Upload convert_db.py to your server and run it. If you don't receive an error, the conversion was successful, congratulations!
+- Modify the includes/conifg.py script to include the connection information for your source MSSQL database and your destination MySQL database, and make a list of the tables to re-create
+- Upload script and files to your server and run it. If you don't receive an error, the conversion was successful, congratulations!
 If you do receive an error, start de-bugging and fork your changes or submit a pull request.
 
