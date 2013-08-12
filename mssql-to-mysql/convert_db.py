@@ -4,21 +4,26 @@ import pyodbc
 import sys
 import datetime
 
-functions_include = open("includes/functions.py").read();
-config_include = open("includes/config.py").read();
-exec functions_include
-exec config_include
+import includes.config as config
+import includes.functions as functions
+import sqlserver_datatypes as data_types
 
-
-
-typesFile = open('includes/sqlserver_datatypes.txt', 'r').readlines()
-dataTypes = dict((row.split(',')[0].strip(),row.split(',')[1].strip()) for row in typesFile)
+dataTypes = data_types.data_types
 
 #connection for MSSQL. (Note: you must have FreeTDS installed and configured!)
-conn = pyodbc.connect(odbcConString)
+msConn = pyodbc.connect(config.odbcConString)
 msCursor = conn.cursor()
-strofTables = "','".join(map(str, listofTables))
-strofTables = "('"+strofTables+"')"
+
+#connection for MySQL
+myConn = MySQLdb.connect(host=config.MYSQL_host,user=config.MYSQL_user, passwd=config.MYSQL_passwd, db=config.MYSQL_db)
+myCursor = myConn.cursor()
+
+if listofTables:
+    strofTables = "','".join(map(str, listofTables))
+    strofTables = "('"+strofTables+"')"
+else:
+    strofTables = "*"
+
 msCursor.execute("SELECT * FROM sysobjects WHERE name in %s" % strofTables ) #sysobjects is a table in MSSQL db's containing meta data about the database. (Note: this may vary depending on your MSSQL version!)
 dbTables = msCursor.fetchall()
 noLength = [56, 58, 61, 35] #list of MSSQL data types that don't require a defined lenght ie. datetime
@@ -47,29 +52,21 @@ for tbl in dbTables:
             attr += "`"+col.name +"` "+ colType + "(" + str(col.length) + "),"
     
     attr = attr[:-1]
-    
 
-    #connection for MySQL
-    db = MySQLdb.connect(host=MYSQL_host,user=MYSQL_user, passwd=MYSQL_passwd, db=MYSQL_db)
-    myCursor = db.cursor()
        
-    if checkTableExists(db, crtTable):
+    if functions.checkTableExists(myCursor, crtTable):
         myCursor.execute("drop table "+crtTable)
 
     myCursor.execute("CREATE TABLE " + crtTable + " (" + attr + ");") #create the new table and all columns
     msCursor.execute("select * from "+ tbl[0])
     tblData = msCursor.fetchall()
 
-
-
     fieldcount = ", ".join("?" * len(columns))
-
-
 
     for row in tblData:
         newrow = list(row)
 
-        for i in common_iterable(newrow): 
+        for i in functions.common_iterable(newrow): 
        
             if newrow[i] == None:
     	       newrow[i] = 0
@@ -78,15 +75,14 @@ for tbl in dbTables:
                 newrow[i] = newrow[i].date().isoformat()
     			
         row = tuple(newrow)
-        db.ping(True)
+        myConn.ping(True)
        
         query_string = "insert into `" + crtTable + "` VALUES %r;" % (tuple(newrow),)
         
        
         myCursor.execute(query_string)
-      	
+        myConn.commit() #mysql commit changes to database
       
-    myCursor.close()
-    db.commit() #mysql commit changes to database
-    db.close () #mysql close connection
+myCursor.close()
+myConn.close () #mysql close connection
 conn.close() #mssql close connection
