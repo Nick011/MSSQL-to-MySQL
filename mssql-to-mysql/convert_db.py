@@ -18,11 +18,11 @@ my_cursor = my_conn.cursor()
 
 if listofTables:
     ms_tables = "','".join(map(str, listofTables))
-    ms_tables = "('"+ms_tables+"')"
+    ms_tables = "WHERE name in ('"+ms_tables+"')"
 else:
-    ms_tables = "*"
+    ms_tables = ""
 
-ms_cursor.execute("SELECT * FROM sysobjects WHERE name in %s" % ms_tables ) #sysobjects is a table in MSSQL db's containing meta data about the database. (Note: this may vary depending on your MSSQL version!)
+ms_cursor.execute("SELECT * FROM sysobjects %s" % ms_tables ) #sysobjects is a table in MSSQL db's containing meta data about the database. (Note: this may vary depending on your MSSQL version!)
 ms_tables = ms_cursor.fetchall()
 noLength = [56, 58, 61, 35] #list of MSSQL data types that don't require a defined lenght ie. datetime
 
