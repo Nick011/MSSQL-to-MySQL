@@ -6,35 +6,33 @@ import datetime
 
 import includes.config as config
 import includes.functions as functions
-import sqlserver_datatypes as data_types
-
-dataTypes = data_types.data_types
+import sqlserver_datatypes.data_types as data_types
 
 #connection for MSSQL. (Note: you must have FreeTDS installed and configured!)
-msConn = pyodbc.connect(config.odbcConString)
-msCursor = conn.cursor()
+ms_conn = pyodbc.connect(config.odbcConString)
+ms_cursor = ms_conn.cursor()
 
 #connection for MySQL
-myConn = MySQLdb.connect(host=config.MYSQL_host,user=config.MYSQL_user, passwd=config.MYSQL_passwd, db=config.MYSQL_db)
-myCursor = myConn.cursor()
+my_conn = MySQLdb.connect(host=config.MYSQL_host,user=config.MYSQL_user, passwd=config.MYSQL_passwd, db=config.MYSQL_db)
+my_cursor = my_conn.cursor()
 
 if listofTables:
-    strofTables = "','".join(map(str, listofTables))
-    strofTables = "('"+strofTables+"')"
+    ms_tables = "','".join(map(str, listofTables))
+    ms_tables = "('"+ms_tables+"')"
 else:
-    strofTables = "*"
+    ms_tables = "*"
 
-msCursor.execute("SELECT * FROM sysobjects WHERE name in %s" % strofTables ) #sysobjects is a table in MSSQL db's containing meta data about the database. (Note: this may vary depending on your MSSQL version!)
-dbTables = msCursor.fetchall()
+ms_cursor.execute("SELECT * FROM sysobjects WHERE name in %s" % ms_tables ) #sysobjects is a table in MSSQL db's containing meta data about the database. (Note: this may vary depending on your MSSQL version!)
+ms_tables = ms_cursor.fetchall()
 noLength = [56, 58, 61, 35] #list of MSSQL data types that don't require a defined lenght ie. datetime
 
-for tbl in dbTables:
+for tbl in ms_tables:
     crtTable = tbl[0]
-    msCursor.execute("SELECT * FROM syscolumns WHERE id = OBJECT_ID('%s')" % tbl[0]) #syscolumns: see sysobjects above.
-    columns = msCursor.fetchall()
+    ms_cursor.execute("SELECT * FROM syscolumns WHERE id = OBJECT_ID('%s')" % tbl[0]) #syscolumns: see sysobjects above.
+    columns = ms_cursor.fetchall()
     attr = ""
     for col in columns:
-        colType = dataTypes[str(col.xtype)] #retrieve the column type based on the data type id
+        colType = data_types[str(col.xtype)] #retrieve the column type based on the data type id
 
         #make adjustments to account for data types present in MSSQL but not supported in MySQL (NEEDS WORK!)
         if col.xtype == 60:
@@ -54,35 +52,35 @@ for tbl in dbTables:
     attr = attr[:-1]
 
        
-    if functions.checkTableExists(myCursor, crtTable):
-        myCursor.execute("drop table "+crtTable)
+    if functions.check_table_exists(my_cursor, crtTable):
+        my_cursor.execute("drop table "+crtTable)
 
-    myCursor.execute("CREATE TABLE " + crtTable + " (" + attr + ");") #create the new table and all columns
-    msCursor.execute("select * from "+ tbl[0])
-    tblData = msCursor.fetchall()
+    my_cursor.execute("CREATE TABLE " + crtTable + " (" + attr + ");") #create the new table and all columns
+    ms_cursor.execute("select * from "+ tbl[0])
+    tbl_data = ms_cursor.fetchall()
 
-    fieldcount = ", ".join("?" * len(columns))
+    field_count = ", ".join("?" * len(columns))
 
-    for row in tblData:
-        newrow = list(row)
+    for row in tbl_data:
+        new_row = list(row)
 
-        for i in functions.common_iterable(newrow): 
+        for i in functions.common_iterable(new_row): 
        
-            if newrow[i] == None:
-    	       newrow[i] = 0
-            elif type(newrow[i]) == datetime.datetime:
+            if new_row[i] == None:
+    	       new_row[i] = 0
+            elif type(new_row[i]) == datetime.datetime:
         
-                newrow[i] = newrow[i].date().isoformat()
+                new_row[i] = new_row[i].date().isoformat()
     			
-        row = tuple(newrow)
-        myConn.ping(True)
+        row = tuple(new_row)
+        my_conn.ping(True)
        
-        query_string = "insert into `" + crtTable + "` VALUES %r;" % (tuple(newrow),)
+        query_string = "insert into `" + crtTable + "` VALUES %r;" % (tuple(new_row),)
         
        
-        myCursor.execute(query_string)
-        myConn.commit() #mysql commit changes to database
+        my_cursor.execute(query_string)
+        my_conn.commit() #mysql commit changes to database
       
-myCursor.close()
-myConn.close () #mysql close connection
+my_cursor.close()
+my_conn.close () #mysql close connection
 conn.close() #mssql close connection

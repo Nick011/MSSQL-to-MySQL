@@ -9,7 +9,7 @@ def common_iterable(obj):
         return (index for index, value in enumerate(obj))
 
 #found this at http://stackoverflow.com/questions/17044259/python-how-to-check-if-table-exists
-def checkTableExists(dbcur, tablename):
+def check_table_exists(dbcur, tablename):
     dbcur.execute("""
         SELECT COUNT(*)
         FROM information_schema.tables
