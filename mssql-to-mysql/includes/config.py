@@ -10,5 +10,4 @@ MYSQL_passwd="password"
 MYSQL_db="dbtoselect"
 
 #tables to retrieve and recreate
-listofTables = ['vw_one', 'tbltocopy2', 'anotherView']
-
+listofTables = []
