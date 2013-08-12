@@ -56,7 +56,7 @@ for tbl in ms_tables:
         my_cursor.execute("drop table "+crtTable)
 
     my_cursor.execute("CREATE TABLE " + crtTable + " (" + attr + ");") #create the new table and all columns
-    ms_cursor.execute("select * from "+ tbl[0])
+    ms_cursor.execute("SELECT * FROM "+ tbl[0])
     tbl_data = ms_cursor.fetchall()
 
     field_count = ", ".join("?" * len(columns))
@@ -75,7 +75,7 @@ for tbl in ms_tables:
         row = tuple(new_row)
         my_conn.ping(True)
        
-        query_string = "insert into `" + crtTable + "` VALUES %r;" % (tuple(new_row),)
+        query_string = "INSERT INTO `" + crtTable + "` VALUES %r;" % (tuple(new_row),)
         
        
         my_cursor.execute(query_string)
