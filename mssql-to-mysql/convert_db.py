@@ -6,7 +6,7 @@ import datetime
 
 import includes.config as config
 import includes.functions as functions
-import sqlserver_datatypes.data_types as data_types
+import includes.sqlserver_datatypes as data_types
 
 #connection for MSSQL. (Note: you must have FreeTDS installed and configured!)
 ms_conn = pyodbc.connect(config.odbcConString)
@@ -14,15 +14,16 @@ ms_cursor = ms_conn.cursor()
 
 #connection for MySQL
 my_conn = MySQLdb.connect(host=config.MYSQL_host,user=config.MYSQL_user, passwd=config.MYSQL_passwd, db=config.MYSQL_db)
-my_cursor = my_conn.cursor()
+my_cursor = my_conn.cursor()   
 
-if listofTables:
-    ms_tables = "','".join(map(str, listofTables))
-    ms_tables = "('"+ms_tables+"')"
+if config.list_of_tables:
+
+    ms_tables = "','".join(map(str, config.list_of_tables))
+    ms_tables = "WHERE name in ('"+ms_tables+"')"
 else:
-    ms_tables = "*"
+    ms_tables = "WHERE type in ('U')" #tables are 'U' and views are 'V' 
 
-ms_cursor.execute("SELECT * FROM sysobjects WHERE name in %s" % ms_tables ) #sysobjects is a table in MSSQL db's containing meta data about the database. (Note: this may vary depending on your MSSQL version!)
+ms_cursor.execute("SELECT * FROM sysobjects %s;" % ms_tables ) #sysobjects is a table in MSSQL db's containing meta data about the database. (Note: this may vary depending on your MSSQL version!)
 ms_tables = ms_cursor.fetchall()
 noLength = [56, 58, 61, 35] #list of MSSQL data types that don't require a defined lenght ie. datetime
 
@@ -32,7 +33,7 @@ for tbl in ms_tables:
     columns = ms_cursor.fetchall()
     attr = ""
     for col in columns:
-        colType = data_types[str(col.xtype)] #retrieve the column type based on the data type id
+        colType = data_types.data_types[str(col.xtype)] #retrieve the column type based on the data type id
 
         #make adjustments to account for data types present in MSSQL but not supported in MySQL (NEEDS WORK!)
         if col.xtype == 60:
@@ -50,8 +51,10 @@ for tbl in ms_tables:
             attr += "`"+col.name +"` "+ colType + "(" + str(col.length) + "),"
     
     attr = attr[:-1]
+    
 
-       
+
+
     if functions.check_table_exists(my_cursor, crtTable):
         my_cursor.execute("drop table "+crtTable)
 
@@ -59,19 +62,17 @@ for tbl in ms_tables:
     ms_cursor.execute("SELECT * FROM "+ tbl[0])
     tbl_data = ms_cursor.fetchall()
 
-    field_count = ", ".join("?" * len(columns))
-
     for row in tbl_data:
         new_row = list(row)
 
         for i in functions.common_iterable(new_row): 
        
             if new_row[i] == None:
-    	       new_row[i] = 0
+               new_row[i] = 0
             elif type(new_row[i]) == datetime.datetime:
         
                 new_row[i] = new_row[i].date().isoformat()
-    			
+                
         row = tuple(new_row)
         my_conn.ping(True)
        
@@ -79,8 +80,8 @@ for tbl in ms_tables:
         
        
         my_cursor.execute(query_string)
-        my_conn.commit() #mysql commit changes to database
-      
+        my_conn.commit() #mysql commit changes to database 
+        
 my_cursor.close()
-my_conn.close () #mysql close connection
-conn.close() #mssql close connection
+my_conn.close() #mysql close connection
+ms_conn.close() #mssql close connection
