@@ -16,8 +16,8 @@ myCursor = db.cursor()
 msCursor.execute("SELECT * FROM sysobjects WHERE type='U'") #sysobjects is a table in MSSQL db's containing meta data about the database. (Note: this may vary depending on your MSSQL version!)
 dbTables = msCursor.fetchall()
 noLength = [56, 58, 61] #list of MSSQL data types that don't require a defined lenght ie. datetime
-
 for tbl in dbTables:
+    print 'migrating {0}'.format(tbl[0])
     msCursor.execute("SELECT * FROM syscolumns WHERE id = OBJECT_ID('%s')" % tbl[0]) #syscolumns: see sysobjects above.
     columns = msCursor.fetchall()
     attr = ""
@@ -34,20 +34,30 @@ for tbl in dbTables:
 	    attr += col.name +" "+ colType + "(" + str(col.length) + "),"
 	
     attr = attr[:-1]
+   
+    print 'Fetch rows from table {0}'.format(tbl[0])
     myCursor.execute("CREATE TABLE " + tbl[0] + " (" + attr + ");") #create the new table and all columns
     msCursor.execute("select * from %s" % tbl[0])
-    tblData = msCursor.fetchall()
+    tblData = msCursor.fetchmany(1000)
 
-    #populate the new MySQL table with the data from MSSQL
-    for row in tblData:
-	fieldList = ""
-	for field in row:
-	    if field == None: 
-		fieldList += "NULL,"
-	    else:
-		field = MySQLdb.escape_string(str(field))
-		fieldList += "'"+ field + "',"
+    while len(tblData) > 0:
+        cnt = 0
+        #populate the new MySQL table with the data from MSSQL
+        for row in tblData:
+    	    fieldList = ""
+    	    for field in row:
+	        if field == None: 
+		    fieldList += "NULL,"
+	        else:
+		    field = MySQLdb.escape_string(str(field))
+		    fieldList += "'"+ field + "',"
 
-	fieldList = fieldList[:-1]
-	myCursor.execute("INSERT INTO " + tbl[0] + " VALUES (" + fieldList + ")" )
+	    fieldList = fieldList[:-1]
+	    myCursor.execute("INSERT INTO " + tbl[0] + " VALUES (" + fieldList + ")" )
+            cnt += 1
+            if cnt%100 == 0:
+                print 'inserted 100 rows into table {0}'.format(tbl[0])
+        db.commit()
+        tblData = msCursor.fetchmany(1000)
+
 
